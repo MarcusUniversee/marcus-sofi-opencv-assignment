@@ -34,17 +34,18 @@ max_area = 0
 RATIO = 6/2.75
 for contour in contours:
     x, y, w, h = cv2.boundingRect(contour)
+    #print(f"area: {cv2.contourArea(contour)}\nwidth: {w}\n height: {h}")
+    #cv2.imshow(f"{cv2.contourArea(contour)}", cv2.resize(rotated[y:y+h, x:x+w], (1000, 700)))
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
     if (cv2.contourArea(contour) > max_area and w > h*RATIO):
-        #cv2.imshow(f"{max_area}", cv2.resize(rotated[y:y+h, x:x+w], (1000, 700)))
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
         max_area = cv2.contourArea(contour)
         largest_contour = contour
         
 x, y, w, h = cv2.boundingRect(largest_contour)
 cropped_image = rotated[y:y+h, x:x+w]
-# Optional: Display the image with bounding rectangles (for testing)
 cv2.imshow('Original Image', cv2.resize(image, (1280, 800)))
+cv2.imshow('Rotated', cv2.resize(rotated, (1280, 800)))
 cv2.imshow("Cropped", cv2.resize(cropped_image, (1280, 800)))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
