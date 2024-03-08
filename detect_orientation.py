@@ -2,50 +2,64 @@ from pytesseract import Output
 import pytesseract
 import imutils
 import cv2
+import numpy as np
 # load the input image, convert it from BGR to RGB channel ordering,
 # and use Tesseract to determine the text orientation
 image = cv2.imread("images/IMG_1599.jpg")
-rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-results = pytesseract.image_to_osd(rgb, output_type=Output.DICT)
-# display the orientation information
-print("[INFO] detected orientation: {}".format(
-	results["orientation"]))
-print("[INFO] rotate by {} degrees to correct".format(
-	results["rotate"]))
-print("[INFO] detected script: {}".format(results["script"]))
-# rotate the image to correct the orientation
-rotated = imutils.rotate_bound(image, angle=results["rotate"])
-# show the original image and output image after orientation
-# correction
-#cv2.imshow("Original", cv2.resize(image, (1440, 900)))
-#cv2.imshow("Output", cv2.resize(rotated, (1440, 900)))
-#cv2.waitKey(0)
+
+def osd_rotate(img):
+    results = pytesseract.image_to_osd(img, output_type=Output.DICT)
+    # display the orientation information
+    print("[INFO] detected orientation: {}".format(
+        results["orientation"]))
+    print("[INFO] rotate by {} degrees to correct".format(
+        results["rotate"]))
+    print("[INFO] detected script: {}".format(results["script"]))
+    # rotate the image to correct the orientation
+    return imutils.rotate_bound(img, angle=results["rotate"])
 
 #convert to gray scale
-gray = cv2.cvtColor(rotated, cv2.COLOR_RGB2GRAY)
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 #apply blur to increase accuracy by ignoring small details
-blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-ret, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-count = 0
-largest_contour = None
-max_area = 0
-RATIO = 6/2.75
+BLUR_DEGREE = (15, 15)
+blurred = cv2.GaussianBlur(gray, BLUR_DEGREE, 0)
+edges = cv2.Canny(gray, 50, 150)
+contours, hierarchy = cv2.findContours(edges.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+rotated = None
 for contour in contours:
-    x, y, w, h = cv2.boundingRect(contour)
-    #print(f"area: {cv2.contourArea(contour)}\nwidth: {w}\n height: {h}")
-    #cv2.imshow(f"{cv2.contourArea(contour)}", cv2.resize(rotated[y:y+h, x:x+w], (1000, 700)))
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-    if (cv2.contourArea(contour) > max_area and w > h*RATIO):
-        max_area = cv2.contourArea(contour)
-        largest_contour = contour
+    #this process detects if a contour is rectangle (that is not too small), and then crops and rotates it
+    peri = cv2.arcLength(contour, True)
+    approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+    if (len(approx)) == 4 and cv2.contourArea(contour) > 1000:
+        rect = cv2.minAreaRect(approx)
+        box = cv2.boxPoints(rect)
+        box = np.intp(box)
+        width = int(rect[1][0])
+        height = int(rect[1][1])
+
+        src_pts = box.astype("float32")
+
+        dst_pts = np.array([[0, height-1],
+                            [0, 0], 
+                            [width-1, 0],
+                            [width-1, height-1]], dtype="float32")
         
-x, y, w, h = cv2.boundingRect(largest_contour)
-cropped_image = rotated[y:y+h, x:x+w]
+        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        warped = cv2.warpPerspective(image, M, (width, height))
+        try:
+            rotated = osd_rotate(warped)
+        except pytesseract.pytesseract.TesseractError:
+            print("too few characters")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+
+#I had to resize because it would not fit the entire image onto my computer screen, so the ratios are probably off
 cv2.imshow('Original Image', cv2.resize(image, (1280, 800)))
-cv2.imshow('Rotated', cv2.resize(rotated, (1280, 800)))
-cv2.imshow("Cropped", cv2.resize(cropped_image, (1280, 800)))
+try:
+    cv2.imshow('Rotated', cv2.resize(rotated, (1280, 600)))
+except:
+    print("Unable to find valid image")
 cv2.waitKey(0)
 cv2.destroyAllWindows()
