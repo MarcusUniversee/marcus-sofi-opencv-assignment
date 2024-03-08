@@ -78,12 +78,12 @@ gray = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
 edges = cv2.Canny(gray, 50, 150,)
 
 #these numbers can be tweaked
-lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=30, minLineLength=50, maxLineGap=30)
+lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=20)
 bottom_line_date_box = date_box[1] + date_box[3]
 min_line = None
 min_dist = float("inf")
 
-HORIZONTAL_PRECISION = 10
+HORIZONTAL_PRECISION = 5
 
 for line in lines:
     for x1, y1, x2, y2 in line:
