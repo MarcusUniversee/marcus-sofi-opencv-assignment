@@ -7,16 +7,18 @@ from orient_crop import orient_crop
 
 
 check_img = orient_crop("images/IMG_1599.jpg")
-
+#cv2.imwrite("cropped_IMG_1599.jpg", check_img)
 #finds a word in img and returns a bounding box in x,y position and width and height
 def find_word(img, word):
     rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     data = pytesseract.image_to_data(rgb, output_type=Output.DICT)
+    print(data['text'])
     for i in range(len(data['text'])):
         if word in data['text'][i].lower():
             x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
             return (x, y, w, h)
     return (-1, -1, -1, -1)
+
 
 date_box = find_word(check_img, "date")
 
